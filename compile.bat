@@ -1,0 +1,1 @@
+gcc -o pshv_encoder.exe main.c

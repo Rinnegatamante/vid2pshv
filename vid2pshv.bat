@@ -1,0 +1,16 @@
+@echo vid2pshv - PSHV Encoder
+@echo -----------------------
+@set /p input= "Insert input filename: "
+@set /p chn= "Insert audiochannels number: "
+@set /p smp= "Insert samplerate (Default: 44100): "
+@set /p vb= "Insert video bitrate in MB/s (Default: 2): "
+@echo Starting BSF stream extraction through ffmpeg, please wait...
+@ffmpeg -i %input% -r 30000/1001 -vf scale=960:544 -b:v %vb%M -maxrate %vb%M -bufsize 2M -c:v libx264 -x264opts "aud=1" -crf 18 -profile:v baseline -g 15 -pix_fmt yuv420p temp\baseline.264
+@echo Starting audio extraction through ffmpeg, please wait...
+@ffmpeg -i %input% -acodec: libvorbis -ac %chn% -ar %smp% -vn temp\audiotrack.ogg
+@echo Starting video encoding, please wait...
+@pshv_encoder.exe 29.970
+@echo Deleting temp files...
+@del /q ".\temp\*.*"
+@echo Video converted successfully, you'll find an output.pshv file...
+@set /p dummy= "Press ENTER to exit"
