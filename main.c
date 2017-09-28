@@ -4,52 +4,66 @@
 #include <string.h>
 #include <stdlib.h>
 
+#define BUFFER_SIZE 536870912
+
+unsigned long audiosize;
+unsigned long videosize;
+
+void bufferedWrite(FILE* in, FILE* out, unsigned long size){
+	char* buffer = (char*)malloc(BUFFER_SIZE);
+	int i = 0;
+	unsigned long len;
+	while (i < size){
+		len = ((i + BUFFER_SIZE) > size) ? (size - i) : BUFFER_SIZE;
+		fread(buffer, 1, len, in);
+		fwrite(buffer, 1, len, out);
+		i += len;
+	}
+	free(buffer);
+}
+
 int main(int argc,char** argv){
 	
+	// Getting framerate from argv
 	float framerate = atof(argv[1]);
 	
-	char* audio_buffer;
-	char* video_buffer;
-
-	unsigned long audiosize;
-	unsigned long videosize;
+	// Opening output file
+	FILE* output = fopen("output.pshv", "wb");
+	fwrite("PSHV",1,4,output);
+	fwrite(&framerate, sizeof(float), 1, output);
 	
-	printf("Opening audio track...\n");
+	// Getting audio size
+	printf("Writing audio track...\n");
 	FILE* input_audio = fopen("./temp/audiotrack.ogg","rb");		
 	unsigned long read_start = 0;
 	fseek(input_audio, 0, SEEK_END);
 	unsigned long size = (unsigned long)ftell(input_audio);
 	audiosize = size - read_start;
-	audio_buffer = (char*)malloc(audiosize);
-	fseek(input_audio, read_start, SEEK_SET);
-	fread(audio_buffer, 1, audiosize, input_audio);
-	fclose(input_audio);
-	printf("Audio size: %lu bytes\n", size);
+	fwrite(&audiosize, sizeof(unsigned long), 1, output);
+	printf("Audio size: %lu bytes\n", audiosize);
 	
+	// Writing audio data
+	fseek(input_audio, read_start, SEEK_SET);
+	bufferedWrite(input_audio, output, audiosize);
+	fclose(input_audio);
+	
+	// Getting video size
 	printf("Opening video track...\n");
 	FILE* input_video = fopen("./temp/baseline.264","rb");		
 	read_start = 0;
 	fseek(input_video, 0, SEEK_END);
 	size = (unsigned long)ftell(input_video);
 	videosize = size - read_start;
-	video_buffer = (char*)malloc(videosize);
-	fseek(input_video, read_start, SEEK_SET);
-	fread(video_buffer, 1, videosize, input_video);
-	fclose(input_video);
-	printf("Video size: %lu bytes\n", size);
+	printf("Video size: %lu bytes\n", videosize);
 	
-	printf("Writing output.pshv...\n");
-	FILE* output = fopen("output.pshv", "wb");
-	fwrite("PSHV",1,4,output);
-	fwrite(&framerate, sizeof(float), 1, output);
-	fwrite(&audiosize, sizeof(unsigned long), 1, output);
-	fwrite(audio_buffer, audiosize, 1, output);
-	fwrite(video_buffer, videosize, 1, output);
+	// Writing video data
+	fseek(input_video, read_start, SEEK_SET);
+	bufferedWrite(input_video, output, videosize);
+	fclose(input_video);
+	
+	// Flushing output
 	fclose(output);
 	printf("Done!\n", size);
-	
-	free(audio_buffer);
-	free(video_buffer);
 	
 	return 0;
 	
